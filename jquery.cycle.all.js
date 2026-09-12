@@ -37,21 +37,31 @@ $.expr[':'].paused = function(el) {
 //	 that the resume should occur immediately (not wait for next timeout)
 
 $.fn.cycle = function(options, arg2) {
-	var o = { s: this.selector, c: this.context };
+    var opts     = (options && typeof options === 'object') ? options : {},
+        selector = this.selector || opts.selector || null,
+        context  = this.context  || opts.context  || document,
+        isStop   = options === 'stop' || opts.cmd === 'stop',
+        domReady = document.readyState !== 'loading';
 
-	// in 1.3+ we can fix mistakes with the ready state
-	if (this.length === 0 && options != 'stop') {
-		if (!$.isReady && o.s) {
-			log('DOM not ready, queuing slideshow');
-			$(function() {
-				$(o.s,o.c).cycle(options,arg2);
-			});
-			return this;
-		}
-		// is your DOM ready?  http://docs.jquery.com/Tutorials:Introducing_$(document).ready()
-		log('terminating; zero elements found by selector' + ($.isReady ? '' : ' (DOM not ready)'));
-		return this;
-	}
+    if (this.length === 0 && !isStop) {
+        if (selector && !domReady && !queuedSelectors[selector]) {
+            queuedSelectors[selector] = true;
+            log('DOM not ready, queuing slideshow for: ' + selector);
+
+            $(function() {
+                delete queuedSelectors[selector];
+                $(selector, context).cycle(options, arg2);
+            });
+
+            return this;
+        }
+
+        log('terminating; zero elements found' +
+            (selector ? ' by selector "' + selector + '"' : '') +
+            (domReady ? '' : ' (DOM not ready)'));
+
+        return this;
+    }
 
 	// iterate the matched nodeset
 	return this.each(function() {
